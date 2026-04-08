@@ -1,5 +1,0 @@
-numpy
-scipy
-rich
-flask
-requests

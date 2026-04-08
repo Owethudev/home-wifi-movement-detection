@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="refresh" content="5">
+    <title>WiFi Motion Detector</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .status {
+            font-size: 48px;
+            font-weight: bold;
+            margin: 50px 0;
+            padding: 50px;
+            border-radius: 10px;
+            text-align: center;
+            min-height: 200px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .calibrating {
+            background-color: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+        .ready {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .signal {
+            background-color: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        .motion {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+    </style>
+</head>
+<body>
+    <h1>WiFi Motion Detector</h1>
+    <p id="targetInfo">Monitoring 192.168.0.180 for motion</p>
+    <button id="scanBtn">Scan 192.168.0.180</button>
+    <div id="scanStatus" style="margin-top: 16px; font-size: 18px;"></div>
+    <div id="status" class="status calibrating">Calibrating... Please wait.</div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+        const statusDiv = document.getElementById('status');
+        const scanBtn = document.getElementById('scanBtn');
+        const scanStatus = document.getElementById('scanStatus');
+
+        socket.on('calibrated', (data) => {
+            statusDiv.className = 'status ready';
+            statusDiv.textContent = 'Ready! Monitoring for movement.';
+        });
+
+        socket.on('motion', (data) => {
+            statusDiv.className = 'status motion';
+            if (data.target === '192.168.0.180') {
+                statusDiv.textContent = 'LILY MOVING';
+            } else {
+                statusDiv.textContent = `Motion detected on ${data.target}`;
+            }
+        });
+
+        socket.on('signal', (data) => {
+            statusDiv.className = 'status signal';
+            statusDiv.textContent = data.message || `Signal detected on ${data.target} with no movement`;
+        });
+
+        socket.on('connect', () => {
+            console.log('Connected to server');
+        });
+
+        socket.on('disconnect', () => {
+            console.log('Disconnected from server');
+        });
+
+        scanBtn.addEventListener('click', async () => {
+            scanBtn.disabled = true;
+            scanBtn.textContent = 'Scanning...';
+            scanStatus.textContent = 'Scanning 192.168.0.180...';
+            try {
+                const response = await fetch('/scan?target=192.168.0.180');
+                const result = await response.json();
+                if (result.reachable) {
+                    scanStatus.textContent = '192.168.0.180 is online.';
+                } else {
+                    scanStatus.textContent = '192.168.0.180 not found.';
+                }
+            } catch (error) {
+                scanStatus.textContent = 'Scan failed. Check the server and try again.';
+                console.error('Scan failed:', error);
+            } finally {
+                scanBtn.disabled = false;
+                scanBtn.textContent = 'Scan 192.168.0.180';
+            }
+        });
+    </script>
+</body>
+</html>

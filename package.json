@@ -1,0 +1,14 @@
+{
+  "name": "wifi-motion-detector",
+  "version": "1.0.0",
+  "description": "Motion detection using WiFi signal fluctuations",
+  "main": "detector.js",
+  "scripts": {
+    "start": "node detector.js"
+  },
+  "dependencies": {
+    "express": "^4.18.0",
+    "socket.io": "^4.7.0",
+    "mathjs": "^11.0.0"
+  }
+}
