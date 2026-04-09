@@ -10,13 +10,17 @@ class MotionDetector {
     this.routerIP = routerIP;
     this.interval = interval;
     this.rtts = [];
-    this.windowSize = 50; // sliding window
+    this.windowSize = 80; // larger window for smoother data
     this.baselineVariance = null;
-    this.threshold = 5.0; // z-score threshold - increased for less sensitivity
+    this.threshold = 2.0; // z-score threshold - increased sensitivity
     this.isCalibrating = true;
-    this.calibrationTime = 10000; // 10 seconds
+    this.calibrationTime = 20000; // 20 seconds for stable baseline
     this.io = null;
     this.lastStatus = null;
+    this.motionCount = 0; // hysteresis counter
+    this.motionThreshold = 3; // require 3 consecutive detections for walking
+    this.noMotionCount = 0;
+    this.noMotionThreshold = 5; // require 5 consecutive non-detections to clear
   }
 
   async ping() {
@@ -46,7 +50,20 @@ class MotionDetector {
   detectMotion(currentVariance) {
     if (this.baselineVariance === null) return false;
     const zScore = (currentVariance - this.baselineVariance) / Math.sqrt(this.baselineVariance);
-    return zScore > this.threshold;
+    const isMotion = zScore > this.threshold;
+    
+    // Hysteresis logic to smooth out false positives
+    if (isMotion) {
+      this.motionCount++;
+      this.noMotionCount = 0;
+      return this.motionCount >= this.motionThreshold;
+    } else {
+      this.noMotionCount++;
+      if (this.noMotionCount >= this.noMotionThreshold) {
+        this.motionCount = 0;
+      }
+      return this.motionCount > 0; // still report motion until cleared
+    }
   }
 
   start(io) {
@@ -146,6 +163,6 @@ io.on('connection', (socket) => {
 detector.start(io);
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
+server.listen(PORT, '0.0.0.0', () => {
+  console.log(`Server running on http://0.0.0.0:${PORT}`);
 });
